@@ -1,6 +1,8 @@
-use diesel::Queryable;
+use super::schema::club;
+use diesel::{Identifiable, Queryable};
 
-#[derive(Debug, Queryable)]
+#[derive(Debug, Queryable, Identifiable)]
+#[table_name = "club"]
 pub struct Club {
     pub id: String,
     pub name: String,

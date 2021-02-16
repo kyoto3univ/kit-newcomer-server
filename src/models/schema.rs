@@ -1,4 +1,18 @@
 table! {
+    asset (id) {
+        id -> Bigint,
+        owner_id -> Bigint,
+        club_id -> Bigint,
+        name -> Text,
+        alternative_description -> Nullable<Text>,
+        file_path -> Text,
+        file_size -> Integer,
+        image_width -> Nullable<Integer>,
+        image_height -> Nullable<Integer>,
+    }
+}
+
+table! {
     club (id) {
         id -> Bigint,
         name -> Varchar,
@@ -12,3 +26,10 @@ table! {
         contact_url -> Nullable<Text>,
     }
 }
+
+joinable!(asset -> club (club_id));
+
+allow_tables_to_appear_in_same_query!(
+    asset,
+    club,
+);
