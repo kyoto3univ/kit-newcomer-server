@@ -1,10 +1,11 @@
 use crate::define_enum;
 
 use super::schema::{user, user_club_relation};
+use async_graphql::{Enum, SimpleObject};
 use diesel::Queryable;
 
 define_enum! {
-    #[derive(Debug, Clone, Copy)]
+    #[derive(Debug, Clone, Copy, Eq, PartialEq, Enum)]
     pub enum UserPermission {
         NewcomerOrNone = 0,
         ClubMember = 1,
@@ -13,7 +14,7 @@ define_enum! {
     }
 }
 
-#[derive(Debug, Queryable, Identifiable, Insertable)]
+#[derive(Debug, Queryable, Identifiable, Insertable, SimpleObject)]
 #[table_name = "user"]
 pub struct User {
     pub id: i64,
@@ -21,7 +22,9 @@ pub struct User {
     pub screen_name: String,
     pub icon: Option<String>,
     pub permission: UserPermission,
+    #[graphql(skip)]
     pub access_token: Option<String>,
+    #[graphql(skip)]
     pub access_token_secret: Option<String>,
 }
 

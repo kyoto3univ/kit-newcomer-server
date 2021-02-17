@@ -1,7 +1,8 @@
 use super::schema::asset;
+use async_graphql::SimpleObject;
 use diesel::{Identifiable, Queryable};
 
-#[derive(Debug, Queryable, Associations, Identifiable, Insertable)]
+#[derive(Debug, Queryable, Associations, Identifiable, Insertable, SimpleObject)]
 #[belongs_to(super::Club, foreign_key = "club_id")]
 #[table_name = "asset"]
 pub struct Asset {
