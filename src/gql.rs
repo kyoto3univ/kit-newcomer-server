@@ -1,3 +1,4 @@
+use crate::config::Config;
 use async_graphql::{
     http::{playground_source, GraphQLPlaygroundConfig},
     EmptySubscription, Request, Schema,
@@ -12,13 +13,14 @@ use super::mutations::*;
 use super::queries::*;
 
 type SchemaType = Schema<QueryRoot, MutationRoot, EmptySubscription>;
-pub async fn start_graphql(db: Pool<ConnectionManager<MysqlConnection>>) {
+pub async fn start_graphql(cfg: Config, db: Pool<ConnectionManager<MysqlConnection>>) {
     let schema = Schema::build(
         QueryRoot::default(),
         MutationRoot::default(),
         EmptySubscription,
     )
     .data(db)
+    .data(cfg)
     .finish();
 
     let gql_post =
