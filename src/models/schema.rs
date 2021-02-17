@@ -27,9 +27,34 @@ table! {
     }
 }
 
+table! {
+    user (id) {
+        id -> Bigint,
+        name -> Text,
+        screen_name -> Text,
+        icon -> Nullable<Varchar>,
+        permission -> Integer,
+        access_token -> Nullable<Varchar>,
+        access_token_secret -> Nullable<Varchar>,
+    }
+}
+
+table! {
+    user_club_relation (user_id, club_id) {
+        user_id -> Bigint,
+        club_id -> Bigint,
+        level -> Integer,
+    }
+}
+
 joinable!(asset -> club (club_id));
+joinable!(asset -> user (owner_id));
+joinable!(user_club_relation -> club (club_id));
+joinable!(user_club_relation -> user (user_id));
 
 allow_tables_to_appear_in_same_query!(
     asset,
     club,
+    user,
+    user_club_relation,
 );
