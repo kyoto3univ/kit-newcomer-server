@@ -13,4 +13,4 @@ CREATE TABLE `asset` (
 ) ENGINE = InnoDB CHARSET = utf8mb4;
 -- Add foreign keys
 ALTER TABLE `asset`
-ADD FOREIGN KEY (`club_id`) REFERENCES `club`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;
+ADD CONSTRAINT `fk_asset_club_id` FOREIGN KEY (`club_id`) REFERENCES `club`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;
