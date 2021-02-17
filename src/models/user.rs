@@ -1,12 +1,16 @@
+use crate::define_enum;
+
 use super::schema::{user, user_club_relation};
 use diesel::Queryable;
 
-#[derive(Debug)]
-pub enum UserPermission {
-    NewcomerOrNone = 0,
-    ClubMember = 1,
-    Moderator = 2,
-    Admin = 3,
+define_enum! {
+    #[derive(Debug, Clone, Copy)]
+    pub enum UserPermission {
+        NewcomerOrNone = 0,
+        ClubMember = 1,
+        Moderator = 2,
+        Admin = 3,
+    }
 }
 
 #[derive(Debug, Queryable, Identifiable)]
