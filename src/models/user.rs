@@ -13,23 +13,23 @@ define_enum! {
     }
 }
 
-#[derive(Debug, Queryable, Identifiable)]
+#[derive(Debug, Queryable, Identifiable, Insertable)]
 #[table_name = "user"]
 pub struct User {
-    pub id: u64,
+    pub id: i64,
     pub name: String,
-    pub icon: String,
     pub screen_name: String,
+    pub icon: Option<String>,
     pub permission: UserPermission,
-    pub access_token: String,
-    pub access_token_secret: String,
+    pub access_token: Option<String>,
+    pub access_token_secret: Option<String>,
 }
 
-#[derive(Debug, Queryable, Identifiable)]
+#[derive(Debug, Queryable, Identifiable, Insertable)]
 #[table_name = "user_club_relation"]
 #[primary_key(user_id, club_id)]
 pub struct UserClubRelation {
-    pub user_id: u64,
-    pub club_id: u64,
-    pub level: u32,
+    pub user_id: i64,
+    pub club_id: i64,
+    pub level: i32,
 }
