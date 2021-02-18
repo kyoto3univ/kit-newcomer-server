@@ -1,4 +1,5 @@
 use async_graphql::{Context, Object, Result};
+use chrono::Utc;
 use diesel::{prelude::*, r2d2::ConnectionManager, MysqlConnection, RunQueryDsl};
 use egg_mode::{
     auth::{access_token, authorize_url, request_token},
@@ -7,8 +8,8 @@ use egg_mode::{
 use r2d2::Pool;
 use tokio_compat_02::FutureExt;
 
-use crate::utils::query;
 use crate::{config::Config, dto::twitter::TwitterLoginInput};
+use crate::{dto::token::TokenClaim, utils::query};
 use crate::{
     dto::twitter::{TwitterAuthenticationResponse, TwitterLoginResponse},
     models::{User, UserPermission},
@@ -100,10 +101,22 @@ impl TwitterAuthenticationMutation {
             })
             .await?;
 
+            let claim = TokenClaim {
+                sub: user_id.to_string(),
+                iat: Utc::now().timestamp(),
+                exp: Utc::now().timestamp() + 60 * 60 * 24 * 100,
+                iss: config.jwt_issuer.clone(),
+            };
+            let bearer_token = jsonwebtoken::encode(
+                &jsonwebtoken::Header::default(),
+                &claim,
+                &jsonwebtoken::EncodingKey::from_secret(config.jwt_secret.as_ref()),
+            )?;
+
             Ok(TwitterLoginResponse {
                 user_id: user_id.to_string(),
                 user: db_user,
-                bearer_token: String::from(""),
+                bearer_token,
             })
         } else {
             Err(async_graphql::Error::new("Failed to get access token"))

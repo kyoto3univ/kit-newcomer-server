@@ -15,4 +15,8 @@ pub struct Config {
     pub twitter_callback: String,
     #[envconfig(from = "PORT", default = "8080")]
     pub port: u16,
+    #[envconfig(from = "JWT_SECRET", default = "secret")]
+    pub jwt_secret: String,
+    #[envconfig(from = "JWT_ISSUER", default = "kit-newcomer-server")]
+    pub jwt_issuer: String,
 }
