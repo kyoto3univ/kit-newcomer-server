@@ -1,36 +1,88 @@
-use crate::config::Config;
+use crate::{config::Config, dto::token::TokenClaim, models::User, utils::query};
 use async_graphql::{
     http::{playground_source, GraphQLPlaygroundConfig},
-    EmptySubscription, Request, Schema,
+    EmptySubscription, Request, Response as GqlResponse, Schema, ServerError,
 };
-use async_graphql_warp::{graphql, Response as GqlResponse};
-use diesel::{r2d2::ConnectionManager, MysqlConnection};
+use async_graphql_warp::{graphql, Response as GqlWarpResponse};
+use diesel::{prelude::*, r2d2::ConnectionManager};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use r2d2::Pool;
-use std::{convert::Infallible, env};
+use std::{env, sync::Arc};
 use warp::{http::Response, Filter};
 
 use super::mutations::*;
 use super::queries::*;
 
 type SchemaType = Schema<QueryRoot, MutationRoot, EmptySubscription>;
-pub async fn start_graphql(cfg: Config, db: Pool<ConnectionManager<MysqlConnection>>) {
+async fn get_user_from_token(
+    auth_header: String,
+    config: Arc<Config>,
+    pool: Pool<ConnectionManager<MysqlConnection>>,
+    request: Request,
+) -> Result<Request, anyhow::Error> {
+    let token = auth_header
+        .strip_prefix("Bearer ")
+        .ok_or_else(|| anyhow::anyhow!("Invalid header"))?;
+
+    let token_data = decode::<TokenClaim>(
+        token,
+        &DecodingKey::from_secret(config.jwt_secret.as_ref()),
+        &Validation {
+            leeway: 0,
+            validate_exp: true,
+            validate_nbf: false,
+            algorithms: vec![Algorithm::HS256],
+            iss: Some(config.jwt_issuer.clone()),
+            aud: None,
+            sub: None,
+        },
+    )?;
+
+    let user = query(&pool, move |conn| -> Result<User, anyhow::Error> {
+        use crate::models::schema::user::dsl;
+        Ok(dsl::user
+            .find(token_data.claims.sub.parse::<i64>()?)
+            .first::<User>(conn)?)
+    })
+    .await?;
+
+    Ok(request.data(user))
+}
+
+pub async fn start_graphql(cfg: Arc<Config>, db: Pool<ConnectionManager<MysqlConnection>>) {
     let schema = Schema::build(
         QueryRoot::default(),
         MutationRoot::default(),
         EmptySubscription,
     )
-    .data(db)
-    .data(cfg)
+    .data(cfg.clone())
+    .data(db.clone())
     .finish();
 
-    let gql_post =
-        graphql(schema).and_then(|(schema, request): (SchemaType, Request)| async move {
-            // Execute query
-            let resp = schema.execute(request).await;
+    let gql_post = warp::header::optional::<String>("authorization")
+        .and(graphql(schema))
+        .and_then(
+            move |auth_header_opt: Option<String>, (schema, mut request): (SchemaType, Request)| {
+                let cfg_clone = cfg.clone();
+                let db_clone = db.clone();
+                async move {
+                    if let Some(auth_header) = auth_header_opt {
+                        let result =
+                            get_user_from_token(auth_header, cfg_clone, db_clone, request).await;
+                        if let Ok(res) = result {
+                            request = res;
+                        } else {
+                            return Ok(GqlWarpResponse::from(GqlResponse::from_errors(vec![
+                                ServerError::new("Authorization header is not valid"),
+                            ])));
+                        }
+                    }
+                    let resp = schema.execute(request).await;
 
-            // Return result
-            Ok::<_, Infallible>(GqlResponse::from(resp))
-        });
+                    Ok::<_, warp::Rejection>(GqlWarpResponse::from(resp))
+                }
+            },
+        );
     let graphql_playground = warp::path::end().and(warp::get()).map(|| {
         Response::builder()
             .header("content-type", "text/html")

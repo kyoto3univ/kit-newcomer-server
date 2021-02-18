@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use async_graphql::{Context, Object, Result};
 use chrono::Utc;
 use diesel::{prelude::*, r2d2::ConnectionManager, MysqlConnection, RunQueryDsl};
@@ -24,7 +26,7 @@ impl TwitterAuthenticationMutation {
         &self,
         ctx: &'a Context<'_>,
     ) -> Result<TwitterAuthenticationResponse> {
-        let config = ctx.data::<Config>()?;
+        let config = ctx.data::<Arc<Config>>()?;
         let keypair = KeyPair::new(
             config.twitter_consumer_key.clone(),
             config.twitter_consumer_secret.clone(),
@@ -45,7 +47,7 @@ impl TwitterAuthenticationMutation {
         ctx: &'a Context<'_>,
         request: TwitterLoginInput,
     ) -> Result<TwitterLoginResponse> {
-        let config = ctx.data::<Config>()?;
+        let config = ctx.data::<Arc<Config>>()?;
         let pool = ctx.data::<Pool<ConnectionManager<MysqlConnection>>>()?;
 
         let ck_pair = KeyPair::new(

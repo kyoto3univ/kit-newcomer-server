@@ -16,6 +16,7 @@ use diesel::MysqlConnection;
 use envconfig::Envconfig;
 use gql::start_graphql;
 use r2d2::Pool;
+use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -26,7 +27,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let manager = ConnectionManager::<MysqlConnection>::new(&config.database_url);
     let pool = Pool::builder().build(manager)?;
 
-    start_graphql(config, pool).await;
+    start_graphql(Arc::new(config), pool).await;
 
     Ok(())
 }
