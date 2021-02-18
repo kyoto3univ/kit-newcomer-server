@@ -63,7 +63,7 @@ impl TwitterAuthenticationMutation {
         {
             let tw_user = egg_mode::user::show(user_id, &token).compat().await?;
 
-            query(pool, move |conn| -> Result<(), anyhow::Error> {
+            let db_user = query(pool, move |conn| -> Result<User, anyhow::Error> {
                 use crate::models::schema::user::dsl;
 
                 let find_result = dsl::user
@@ -96,12 +96,13 @@ impl TwitterAuthenticationMutation {
                         .execute(conn)?;
                 }
 
-                Ok(())
+                Ok(dsl::user.find(user_id as i64).first::<User>(conn)?)
             })
             .await?;
 
             Ok(TwitterLoginResponse {
                 user_id: user_id.to_string(),
+                user: db_user,
                 bearer_token: String::from(""),
             })
         } else {

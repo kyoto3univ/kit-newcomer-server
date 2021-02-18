@@ -1,5 +1,7 @@
 use async_graphql::{InputObject, SimpleObject};
 
+use crate::models::User;
+
 #[derive(Debug, SimpleObject)]
 pub struct TwitterAuthenticationResponse {
     pub request_token: String,
@@ -18,4 +20,5 @@ pub struct TwitterLoginInput {
 pub struct TwitterLoginResponse {
     pub bearer_token: String,
     pub user_id: String,
+    pub user: User,
 }
