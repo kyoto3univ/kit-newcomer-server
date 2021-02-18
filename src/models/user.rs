@@ -5,7 +5,7 @@ use async_graphql::{Enum, SimpleObject};
 use diesel::Queryable;
 
 define_enum! {
-    #[derive(Debug, Clone, Copy, Eq, PartialEq, Enum)]
+    #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Enum)]
     pub enum UserPermission {
         NewcomerOrNone = 0,
         ClubMember = 1,

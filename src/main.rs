@@ -4,6 +4,7 @@ extern crate diesel;
 mod config;
 mod dto;
 mod gql;
+mod guard;
 mod models;
 mod mutations;
 mod queries;
