@@ -69,12 +69,18 @@ pub async fn start_graphql(cfg: Arc<Config>, db: Pool<ConnectionManager<MysqlCon
                     if let Some(auth_header) = auth_header_opt {
                         let result =
                             get_user_from_token(auth_header, cfg_clone, db_clone, request).await;
-                        if let Ok(res) = result {
-                            request = res;
-                        } else {
-                            return Ok(GqlWarpResponse::from(GqlResponse::from_errors(vec![
-                                ServerError::new("Authorization header is not valid"),
-                            ])));
+                        match result {
+                            Ok(res) => {
+                                request = res;
+                            }
+                            Err(e) => {
+                                return Ok(GqlWarpResponse::from(GqlResponse::from_errors(vec![
+                                    ServerError::new(format!(
+                                        "Authorization header is not valid {}",
+                                        e.to_string()
+                                    )),
+                                ])));
+                            }
                         }
                     }
                     let resp = schema.execute(request).await;

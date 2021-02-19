@@ -1,10 +1,10 @@
 pub mod schema;
 
 mod club;
-pub use club::Club;
+pub use club::*;
 
 mod asset;
-pub use asset::Asset;
+pub use asset::*;
 
 mod user;
 pub use user::*;
