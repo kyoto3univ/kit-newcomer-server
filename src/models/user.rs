@@ -28,11 +28,19 @@ pub struct User {
     pub access_token_secret: Option<String>,
 }
 
+define_enum! {
+    #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Enum)]
+    pub enum ClubEditLevel {
+        Editor = 0,
+        Owner = 1,
+    }
+}
+
 #[derive(Debug, Queryable, Identifiable, Insertable)]
 #[table_name = "user_club_relation"]
 #[primary_key(user_id, club_id)]
 pub struct UserClubRelation {
     pub user_id: StringNumber,
-    pub club_id: StringNumber,
-    pub level: i32,
+    pub club_id: String,
+    pub level: ClubEditLevel,
 }

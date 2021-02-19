@@ -9,7 +9,7 @@ use diesel::{Identifiable, Queryable};
 pub struct Asset {
     pub id: StringNumber,
     pub owner_id: StringNumber,
-    pub club_id: StringNumber,
+    pub club_id: String,
     pub name: String,
     pub alternative_description: Option<String>,
     pub file_path: String,

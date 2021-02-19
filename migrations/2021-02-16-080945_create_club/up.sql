@@ -1,7 +1,7 @@
 -- Your SQL goes here
 CREATE TABLE `club` (
-    `id` BIGINT NOT NULL AUTO_INCREMENT,
-    `name` VARCHAR(128) NOT NULL,
+    `id` VARCHAR(36) NOT NULL,
+    `name` VARCHAR(256) NOT NULL,
     `is_published` BOOLEAN NOT NULL DEFAULT FALSE,
     `short_description` TEXT,
     `long_description` MEDIUMTEXT,

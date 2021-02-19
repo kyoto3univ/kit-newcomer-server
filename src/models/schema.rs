@@ -2,7 +2,7 @@ table! {
     asset (id) {
         id -> Bigint,
         owner_id -> Bigint,
-        club_id -> Bigint,
+        club_id -> Varchar,
         name -> Text,
         alternative_description -> Nullable<Text>,
         file_path -> Text,
@@ -14,7 +14,7 @@ table! {
 
 table! {
     club (id) {
-        id -> Bigint,
+        id -> Varchar,
         name -> Varchar,
         is_published -> Bool,
         short_description -> Nullable<Text>,
@@ -42,7 +42,7 @@ table! {
 table! {
     user_club_relation (user_id, club_id) {
         user_id -> Bigint,
-        club_id -> Bigint,
+        club_id -> Varchar,
         level -> Integer,
     }
 }

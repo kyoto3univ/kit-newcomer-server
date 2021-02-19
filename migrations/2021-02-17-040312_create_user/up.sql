@@ -11,7 +11,7 @@ CREATE TABLE `user` (
 ) ENGINE = InnoDB CHARSET = utf8mb4;
 CREATE TABLE `user_club_relation`(
     `user_id` BIGINT NOT NULL,
-    `club_id` BIGINT NOT NULL,
+    `club_id` VARCHAR(36) NOT NULL,
     `level` INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (`user_id`, `club_id`)
 );

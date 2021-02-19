@@ -2,7 +2,7 @@
 CREATE TABLE `asset` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `owner_id` BIGINT NOT NULL,
-    `club_id` BIGINT NOT NULL,
+    `club_id` VARCHAR(36) NOT NULL,
     `name` TEXT NOT NULL,
     `alternative_description` TEXT,
     `file_path` TEXT NOT NULL,
