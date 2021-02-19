@@ -11,7 +11,7 @@ use r2d2::Pool;
 use tokio_compat_02::FutureExt;
 
 use crate::{config::Config, dto::twitter::TwitterLoginInput};
-use crate::{dto::token::TokenClaim, utils::query};
+use crate::{dto::token::TokenClaim, utils::query, utils::StringNumber};
 use crate::{
     dto::twitter::{TwitterAuthenticationResponse, TwitterLoginResponse},
     models::{User, UserPermission},
@@ -88,7 +88,7 @@ impl TwitterAuthenticationMutation {
                 } else {
                     diesel::insert_into(dsl::user)
                         .values(User {
-                            id: user_id as i64,
+                            id: StringNumber(user_id as i64),
                             name: tw_user.response.name,
                             icon: Some(tw_user.response.profile_image_url_https),
                             screen_name: tw_user.response.screen_name,

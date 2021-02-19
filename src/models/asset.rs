@@ -1,4 +1,5 @@
 use super::schema::asset;
+use crate::utils::StringNumber;
 use async_graphql::SimpleObject;
 use diesel::{Identifiable, Queryable};
 
@@ -6,9 +7,9 @@ use diesel::{Identifiable, Queryable};
 #[belongs_to(super::Club, foreign_key = "club_id")]
 #[table_name = "asset"]
 pub struct Asset {
-    pub id: i64,
-    pub owner_id: i64,
-    pub club_id: i64,
+    pub id: StringNumber,
+    pub owner_id: StringNumber,
+    pub club_id: StringNumber,
     pub name: String,
     pub alternative_description: Option<String>,
     pub file_path: String,

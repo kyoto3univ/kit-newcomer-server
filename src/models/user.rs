@@ -1,4 +1,4 @@
-use crate::define_enum;
+use crate::{define_enum, utils::StringNumber};
 
 use super::schema::{user, user_club_relation};
 use async_graphql::{Enum, SimpleObject};
@@ -17,7 +17,7 @@ define_enum! {
 #[derive(Debug, Queryable, Identifiable, Insertable, SimpleObject)]
 #[table_name = "user"]
 pub struct User {
-    pub id: i64,
+    pub id: StringNumber,
     pub name: String,
     pub screen_name: String,
     pub icon: Option<String>,
@@ -32,7 +32,7 @@ pub struct User {
 #[table_name = "user_club_relation"]
 #[primary_key(user_id, club_id)]
 pub struct UserClubRelation {
-    pub user_id: i64,
-    pub club_id: i64,
+    pub user_id: StringNumber,
+    pub club_id: StringNumber,
     pub level: i32,
 }
