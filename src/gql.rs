@@ -1,4 +1,4 @@
-use crate::{config::Config, dto::token::TokenClaim, models::User, utils::query};
+use crate::{config::Config, dto::token::TokenClaim, models::User};
 use async_graphql::{
     http::{playground_source, GraphQLPlaygroundConfig},
     EmptySubscription, Request, Response as GqlResponse, Schema, ServerError,
@@ -23,6 +23,7 @@ async fn get_user_from_token(
     let token = auth_header
         .strip_prefix("Bearer ")
         .ok_or_else(|| anyhow::anyhow!("Invalid header"))?;
+    let conn = pool.get()?;
 
     let token_data = decode::<TokenClaim>(
         token,
@@ -38,13 +39,12 @@ async fn get_user_from_token(
         },
     )?;
 
-    let user = query(&pool, move |conn| -> Result<User, anyhow::Error> {
+    let user: User = {
         use crate::models::schema::user::dsl;
-        Ok(dsl::user
+        dsl::user
             .find(token_data.claims.sub.parse::<i64>()?)
-            .first::<User>(conn)?)
-    })
-    .await?;
+            .first::<User>(&conn)?
+    };
 
     Ok(request.data(user))
 }

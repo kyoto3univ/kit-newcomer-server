@@ -11,7 +11,7 @@ use r2d2::Pool;
 use tokio_compat_02::FutureExt;
 
 use crate::{config::Config, dto::twitter::TwitterLoginInput};
-use crate::{dto::token::TokenClaim, utils::query, utils::StringNumber};
+use crate::{dto::token::TokenClaim, utils::StringNumber};
 use crate::{
     dto::twitter::{TwitterAuthenticationResponse, TwitterLoginResponse},
     models::{User, UserPermission},
@@ -66,12 +66,13 @@ impl TwitterAuthenticationMutation {
         {
             let tw_user = egg_mode::user::show(user_id, &token).compat().await?;
 
-            let db_user = query(pool, move |conn| -> Result<User, anyhow::Error> {
+            let conn = pool.get()?;
+            let db_user = conn.transaction(|| -> Result<User, anyhow::Error> {
                 use crate::models::schema::user::dsl;
 
                 let find_result = dsl::user
                     .find(user_id as i64)
-                    .first::<User>(conn)
+                    .first::<User>(&conn)
                     .optional()?;
 
                 if let Some(user) = find_result {
@@ -84,7 +85,7 @@ impl TwitterAuthenticationMutation {
                             dsl::screen_name.eq(tw_user.response.screen_name),
                             dsl::name.eq(tw_user.response.name),
                         ))
-                        .execute(conn)?;
+                        .execute(&conn)?;
                 } else {
                     diesel::insert_into(dsl::user)
                         .values(User {
@@ -96,12 +97,11 @@ impl TwitterAuthenticationMutation {
                             access_token: Some(String::from(access.key.clone())),
                             access_token_secret: Some(String::from(access.secret.clone())),
                         })
-                        .execute(conn)?;
+                        .execute(&conn)?;
                 }
 
-                Ok(dsl::user.find(user_id as i64).first::<User>(conn)?)
-            })
-            .await?;
+                Ok(dsl::user.find(user_id as i64).first::<User>(&conn)?)
+            })?;
 
             let claim = TokenClaim {
                 sub: user_id.to_string(),
