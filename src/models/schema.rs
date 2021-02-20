@@ -22,6 +22,9 @@ table! {
         short_description -> Nullable<Text>,
         long_description -> Nullable<Mediumtext>,
         join_description -> Nullable<Text>,
+        top_image_id -> Nullable<Bigint>,
+        top_content_type -> Integer,
+        thumb_image_id -> Nullable<Bigint>,
         place -> Nullable<Text>,
         schedule -> Nullable<Text>,
         video_url -> Nullable<Text>,
@@ -49,7 +52,6 @@ table! {
     }
 }
 
-joinable!(asset -> club (club_id));
 joinable!(asset -> user (owner_id));
 joinable!(user_club_relation -> club (club_id));
 joinable!(user_club_relation -> user (user_id));
