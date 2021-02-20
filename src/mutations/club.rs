@@ -1,7 +1,7 @@
 use async_graphql::{guard::Guard, Context, Object, Result};
 use chrono::Utc;
 use diesel::{dsl::count, prelude::*, r2d2::ConnectionManager};
-use r2d2::Pool;
+use r2d2::{Pool, PooledConnection};
 use uuid::Uuid;
 
 use crate::{
@@ -9,7 +9,29 @@ use crate::{
     guard::PermissionGuard,
     model_resolver::club::ClubWithMembers,
     models::{Club, ClubEditLevel, User, UserClubRelation, UserPermission},
+    utils::StringNumber,
 };
+
+fn check_club_permission(
+    conn: &PooledConnection<ConnectionManager<MysqlConnection>>,
+    id: &String,
+    user: &User,
+    perm: ClubEditLevel,
+) -> Result<bool> {
+    if user.permission >= UserPermission::Moderator {
+        return Ok(true);
+    }
+
+    let club_count = {
+        use crate::models::schema::user_club_relation::*;
+        table
+            .filter(club_id.eq(id).and(user_id.eq(user.id)).and(level.ge(perm)))
+            .select(count(club_id))
+            .get_result::<i64>(conn)?
+    };
+
+    Ok(club_count == 1)
+}
 
 #[derive(Debug, Default)]
 pub struct ClubMutation;
@@ -70,14 +92,7 @@ impl ClubMutation {
         let user = ctx.data::<User>()?;
         let conn = pool.get()?;
 
-        let club_count = {
-            use crate::models::schema::user_club_relation::*;
-            table
-                .filter(club_id.eq(&id).and(user_id.eq(user.id)))
-                .select(count(club_id))
-                .get_result::<i64>(&conn)?
-        };
-        if club_count == 0 && user.permission <= UserPermission::ClubMember {
+        if !check_club_permission(&conn, &id, user, ClubEditLevel::Editor)? {
             return Err(async_graphql::Error::new("Not allowed"));
         }
 
@@ -109,19 +124,7 @@ impl ClubMutation {
         let user = ctx.data::<User>()?;
         let conn = pool.get()?;
 
-        let club_count = {
-            use crate::models::schema::user_club_relation::*;
-            table
-                .filter(
-                    club_id
-                        .eq(&id)
-                        .and(user_id.eq(user.id))
-                        .and(level.eq(ClubEditLevel::Owner)),
-                )
-                .select(count(club_id))
-                .get_result::<i64>(&conn)?
-        };
-        if club_count == 0 && user.permission <= UserPermission::ClubMember {
+        if !check_club_permission(&conn, &id, user, ClubEditLevel::Owner)? {
             return Err(async_graphql::Error::new("Not allowed"));
         }
 
@@ -137,6 +140,100 @@ impl ClubMutation {
         let club = {
             use crate::models::schema::club::dsl;
             dsl::club.find(&id).get_result::<Club>(&conn)?
+        };
+
+        Ok(ClubWithMembers(club))
+    }
+
+    #[graphql(guard(PermissionGuard(permission = "UserPermission::ClubMember")))]
+    async fn add_member_to_club<'a>(
+        &self,
+        ctx: &'a Context<'_>,
+        club_id: String,
+        user_id: StringNumber,
+        level: Option<ClubEditLevel>,
+    ) -> Result<ClubWithMembers> {
+        let pool = ctx.data::<Pool<ConnectionManager<MysqlConnection>>>()?;
+        let user = ctx.data::<User>()?;
+        let conn = pool.get()?;
+
+        if !check_club_permission(&conn, &club_id, user, ClubEditLevel::Owner)? {
+            return Err(async_graphql::Error::new("Not allowed"));
+        }
+
+        if user_id.0 == user.id.0 {
+            return Err(async_graphql::Error::new("User must not be you"));
+        }
+
+        conn.transaction(|| -> Result<()> {
+            use crate::models::schema::{user, user_club_relation};
+
+            // Update user automatically when it is not a club member role.
+            diesel::update(
+                user::table.filter(
+                    user::id
+                        .eq(&user_id)
+                        .and(user::permission.lt(UserPermission::ClubMember)),
+                ),
+            )
+            .set(user::permission.eq(UserPermission::ClubMember))
+            .execute(&conn)?;
+
+            diesel::insert_or_ignore_into(user_club_relation::table)
+                .values(&UserClubRelation {
+                    club_id: club_id.clone(),
+                    user_id: user_id,
+                    level: level.unwrap_or(ClubEditLevel::Editor),
+                })
+                .execute(&conn)?;
+            Ok(())
+        })?;
+
+        let club = {
+            use crate::models::schema::club::dsl;
+            dsl::club.find(&club_id).get_result::<Club>(&conn)?
+        };
+
+        Ok(ClubWithMembers(club))
+    }
+
+    #[graphql(guard(PermissionGuard(permission = "UserPermission::ClubMember")))]
+    async fn delete_member_from_club<'a>(
+        &self,
+        ctx: &'a Context<'_>,
+        club_id: String,
+        user_id: StringNumber,
+    ) -> Result<ClubWithMembers> {
+        let pool = ctx.data::<Pool<ConnectionManager<MysqlConnection>>>()?;
+        let user = ctx.data::<User>()?;
+        let conn = pool.get()?;
+
+        if !check_club_permission(&conn, &club_id, user, ClubEditLevel::Owner)? {
+            return Err(async_graphql::Error::new("Not allowed"));
+        }
+
+        if user_id.0 == user.id.0 {
+            return Err(async_graphql::Error::new("User must not be you"));
+        }
+
+        conn.transaction(|| -> std::result::Result<(), anyhow::Error> {
+            use crate::models::schema::user_club_relation::{dsl, table};
+
+            let result = diesel::delete(
+                table.filter(dsl::user_id.eq(&user_id).and(dsl::club_id.eq(&club_id))),
+            )
+            .execute(&conn)?;
+
+            if result > 0 {
+                Ok(())
+            } else {
+                Err(anyhow::anyhow!("No such relation"))
+            }
+        })?;
+
+        let club = {
+            use crate::models::schema::club::dsl;
+            dsl::club.find(&club_id).get_result::<Club>(&conn)?
         };
 
         Ok(ClubWithMembers(club))
