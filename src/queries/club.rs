@@ -1,10 +1,11 @@
-use async_graphql::{Context, Object, Result};
+use async_graphql::{guard::Guard, Context, Object, Result};
 use diesel::{prelude::*, r2d2::ConnectionManager};
 use r2d2::Pool;
 
 use crate::{
+    guard::PermissionGuard,
     model_resolver::club::{ClubWithLevelItem, ClubWithMembers},
-    models::{Club, User, UserClubRelation},
+    models::{Club, User, UserClubRelation, UserPermission},
 };
 
 #[derive(Debug, Default)]
@@ -12,6 +13,7 @@ pub struct ClubQuery;
 
 #[Object]
 impl ClubQuery {
+    #[graphql(guard(PermissionGuard(permission = "UserPermission::ClubMember")))]
     async fn get_my_clubs<'a>(&self, ctx: &'a Context<'_>) -> Result<Vec<ClubWithLevelItem>> {
         let pool = ctx.data::<Pool<ConnectionManager<MysqlConnection>>>()?;
         let user = ctx.data::<User>()?;
