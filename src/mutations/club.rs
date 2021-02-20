@@ -76,7 +76,7 @@ impl ClubMutation {
                 .select(count(club_id))
                 .get_result::<i64>(&conn)?
         };
-        if club_count == 0 {
+        if club_count == 0 && user.permission <= UserPermission::ClubMember {
             return Err(async_graphql::Error::new("Not allowed"));
         }
 
@@ -84,6 +84,50 @@ impl ClubMutation {
             use crate::models::schema::club::dsl;
             diesel::update(dsl::club.filter(dsl::id.eq(&id)))
                 .set(&update)
+                .execute(&conn)?;
+
+            Ok(())
+        })?;
+
+        let club = {
+            use crate::models::schema::club::dsl;
+            dsl::club.find(&id).get_result::<Club>(&conn)?
+        };
+
+        Ok(ClubWithMembers(club))
+    }
+
+    #[graphql(guard(PermissionGuard(permission = "UserPermission::ClubMember")))]
+    async fn change_publish_state<'a>(
+        &self,
+        ctx: &'a Context<'_>,
+        id: String,
+        is_published: bool,
+    ) -> Result<ClubWithMembers> {
+        let pool = ctx.data::<Pool<ConnectionManager<MysqlConnection>>>()?;
+        let user = ctx.data::<User>()?;
+        let conn = pool.get()?;
+
+        let club_count = {
+            use crate::models::schema::user_club_relation::*;
+            table
+                .filter(
+                    club_id
+                        .eq(&id)
+                        .and(user_id.eq(user.id))
+                        .and(level.eq(ClubEditLevel::Owner)),
+                )
+                .select(count(club_id))
+                .get_result::<i64>(&conn)?
+        };
+        if club_count == 0 && user.permission <= UserPermission::ClubMember {
+            return Err(async_graphql::Error::new("Not allowed"));
+        }
+
+        conn.transaction(|| -> Result<(), anyhow::Error> {
+            use crate::models::schema::club::dsl;
+            diesel::update(dsl::club.filter(dsl::id.eq(&id)))
+                .set(dsl::is_published.eq(&is_published))
                 .execute(&conn)?;
 
             Ok(())
