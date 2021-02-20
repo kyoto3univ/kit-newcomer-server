@@ -1,9 +1,9 @@
 use super::schema::club;
-use async_graphql::SimpleObject;
 use diesel::{Identifiable, Queryable};
 
-#[derive(Debug, Queryable, Identifiable, SimpleObject)]
+#[derive(Debug, Queryable, Identifiable, Associations)]
 #[table_name = "club"]
+#[belongs_to(super::UserClubRelation, foreign_key = "id")]
 pub struct Club {
     pub id: String,
     pub name: String,

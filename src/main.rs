@@ -9,6 +9,7 @@ mod models;
 mod mutations;
 mod queries;
 mod utils;
+mod model_resolver;
 
 use config::Config;
 use diesel::r2d2::ConnectionManager;

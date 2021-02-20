@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::{
     dto::club::NewClubDto,
+    model_resolver::club::ClubWithMembers,
     models::{Club, ClubEditLevel, User, UserClubRelation},
 };
 
@@ -13,7 +14,11 @@ pub struct ClubMutation;
 
 #[Object]
 impl ClubMutation {
-    async fn create_new_club<'a>(&self, ctx: &'a Context<'_>, name: String) -> Result<Club> {
+    async fn create_new_club<'a>(
+        &self,
+        ctx: &'a Context<'_>,
+        name: String,
+    ) -> Result<ClubWithMembers> {
         let pool = ctx.data::<Pool<ConnectionManager<MysqlConnection>>>()?;
         let user = ctx.data::<User>()?;
         let conn = pool.get()?;
@@ -48,6 +53,6 @@ impl ClubMutation {
             dsl::club.find(id).first::<Club>(&conn)?
         };
 
-        Ok(club)
+        Ok(ClubWithMembers(club))
     }
 }

@@ -5,6 +5,7 @@ use diesel::{Identifiable, Queryable};
 
 #[derive(Debug, Queryable, Associations, Identifiable, Insertable, SimpleObject)]
 #[belongs_to(super::Club, foreign_key = "club_id")]
+#[belongs_to(super::User, foreign_key = "owner_id")]
 #[table_name = "asset"]
 pub struct Asset {
     pub id: StringNumber,

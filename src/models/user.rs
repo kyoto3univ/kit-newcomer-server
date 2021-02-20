@@ -2,7 +2,6 @@ use crate::{define_enum, utils::StringNumber};
 
 use super::schema::{user, user_club_relation};
 use async_graphql::{Enum, SimpleObject};
-use diesel::Queryable;
 
 define_enum! {
     #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Enum)]
@@ -14,8 +13,9 @@ define_enum! {
     }
 }
 
-#[derive(Debug, Queryable, Identifiable, Insertable, SimpleObject)]
+#[derive(Debug, Queryable, Identifiable, Insertable, SimpleObject, Associations)]
 #[table_name = "user"]
+#[belongs_to(UserClubRelation, foreign_key = "id")]
 pub struct User {
     pub id: StringNumber,
     pub name: String,
@@ -36,9 +36,11 @@ define_enum! {
     }
 }
 
-#[derive(Debug, Queryable, Identifiable, Insertable)]
+#[derive(Debug, Queryable, Identifiable, Insertable, Associations)]
 #[table_name = "user_club_relation"]
 #[primary_key(user_id, club_id)]
+#[belongs_to(User, foreign_key = "user_id")]
+#[belongs_to(super::Club, foreign_key = "club_id")]
 pub struct UserClubRelation {
     pub user_id: StringNumber,
     pub club_id: String,
