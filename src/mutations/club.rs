@@ -1,4 +1,5 @@
 use async_graphql::{guard::Guard, Context, Object, Result};
+use chrono::Utc;
 use diesel::{dsl::count, prelude::*, r2d2::ConnectionManager};
 use r2d2::Pool;
 use uuid::Uuid;
@@ -83,7 +84,7 @@ impl ClubMutation {
         conn.transaction(|| -> Result<(), anyhow::Error> {
             use crate::models::schema::club::dsl;
             diesel::update(dsl::club.filter(dsl::id.eq(&id)))
-                .set(&update)
+                .set((&update, dsl::updated_at.eq(Utc::now().naive_utc())))
                 .execute(&conn)?;
 
             Ok(())

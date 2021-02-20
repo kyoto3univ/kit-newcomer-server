@@ -17,6 +17,8 @@ table! {
         id -> Varchar,
         name -> Varchar,
         is_published -> Bool,
+        created_at -> Datetime,
+        updated_at -> Datetime,
         short_description -> Nullable<Text>,
         long_description -> Nullable<Mediumtext>,
         join_description -> Nullable<Text>,

@@ -1,4 +1,5 @@
 use async_graphql::{Context, Object, Result};
+use chrono::{DateTime, Local, TimeZone};
 use diesel::{prelude::*, r2d2::ConnectionManager};
 use r2d2::Pool;
 
@@ -38,6 +39,12 @@ impl ClubWithMembers {
     }
     async fn contact_url(&self) -> Result<&Option<String>> {
         Ok(&self.0.contact_url)
+    }
+    async fn created_at(&self) -> Result<DateTime<Local>> {
+        Ok(Local.from_utc_datetime(&self.0.created_at))
+    }
+    async fn updated_at(&self) -> Result<DateTime<Local>> {
+        Ok(Local.from_utc_datetime(&self.0.updated_at))
     }
 
     // Meaningful impl
