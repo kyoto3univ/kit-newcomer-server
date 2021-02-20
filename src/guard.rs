@@ -3,7 +3,7 @@ use async_graphql::{guard::Guard, Context, Error};
 use crate::models::{User, UserPermission};
 
 pub struct PermissionGuard {
-    permission: UserPermission,
+    pub permission: UserPermission,
 }
 
 #[async_trait::async_trait]

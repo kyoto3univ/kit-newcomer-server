@@ -1,12 +1,13 @@
-use async_graphql::{Context, Object, Result};
+use async_graphql::{guard::Guard, Context, Object, Result};
 use diesel::{prelude::*, r2d2::ConnectionManager};
 use r2d2::Pool;
 use uuid::Uuid;
 
 use crate::{
     dto::club::NewClubDto,
+    guard::PermissionGuard,
     model_resolver::club::ClubWithMembers,
-    models::{Club, ClubEditLevel, User, UserClubRelation},
+    models::{Club, ClubEditLevel, User, UserClubRelation, UserPermission},
 };
 
 #[derive(Debug, Default)]
@@ -14,6 +15,7 @@ pub struct ClubMutation;
 
 #[Object]
 impl ClubMutation {
+    #[graphql(guard(PermissionGuard(permission = "UserPermission::ClubMember")))]
     async fn create_new_club<'a>(
         &self,
         ctx: &'a Context<'_>,
