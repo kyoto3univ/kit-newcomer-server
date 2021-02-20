@@ -1,7 +1,7 @@
 use super::schema::club;
 use diesel::{Identifiable, Queryable};
 
-#[derive(Debug, Queryable, Identifiable, Associations)]
+#[derive(Debug, Clone, Queryable, Identifiable, Associations)]
 #[table_name = "club"]
 #[belongs_to(super::UserClubRelation, foreign_key = "id")]
 pub struct Club {

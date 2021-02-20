@@ -41,7 +41,7 @@ impl ClubWithMembers {
     }
 
     // Meaningful impl
-    async fn members<'a>(&self, ctx: &'a Context<'_>) -> Result<Vec<ClubWithMembersItem>> {
+    async fn members<'b>(&self, ctx: &'b Context<'_>) -> Result<Vec<ClubWithMembersItem>> {
         let conn = ctx
             .data::<Pool<ConnectionManager<MysqlConnection>>>()?
             .get()?;
@@ -71,5 +71,18 @@ impl ClubWithMembersItem {
 
     async fn user(&self) -> Result<&User> {
         Ok(&self.1)
+    }
+}
+
+pub struct ClubWithLevelItem(pub ClubEditLevel, pub Club);
+
+#[Object]
+impl ClubWithLevelItem {
+    async fn level(&self) -> Result<&ClubEditLevel> {
+        Ok(&self.0)
+    }
+
+    async fn club(&self) -> Result<ClubWithMembers> {
+        Ok(ClubWithMembers(self.1.clone()))
     }
 }
