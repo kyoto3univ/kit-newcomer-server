@@ -31,6 +31,7 @@ impl UserQuery {
         offset: Option<i64>,
         limit: Option<i64>,
         least_permission: Option<UserPermission>,
+        screen_name: Option<String>,
     ) -> Result<Vec<User>> {
         let pool = ctx.data::<Pool<ConnectionManager<MysqlConnection>>>()?;
         let conn = pool.get()?;
@@ -45,6 +46,10 @@ impl UserQuery {
                 .into_boxed();
             if let Some(perm) = least_permission {
                 filter = filter.filter(user::permission.ge(perm));
+            }
+
+            if let Some(sn) = screen_name {
+                filter = filter.filter(user::screen_name.like(format!("%{}%", sn)));
             }
 
             filter.get_results::<User>(&conn)?
