@@ -9,9 +9,10 @@ use uuid::Uuid;
 
 use crate::{
     config::Config,
-    dto::asset::NewAssetDto,
+    dto::asset::{NewAssetDto, UpdateAssetDto},
     guard::PermissionGuard,
     models::{last_insert_id, Asset, Club, User, UserPermission},
+    utils::StringNumber,
 };
 
 #[derive(Debug, Default)]
@@ -89,6 +90,52 @@ impl AssetMutation {
                 .execute(&conn)?;
 
             Ok(diesel::select(last_insert_id).first::<i64>(&conn)?)
+        })?;
+
+        let asset = {
+            use crate::models::schema::asset;
+            asset::table.find(asset_id).get_result::<Asset>(&conn)?
+        };
+
+        Ok(asset)
+    }
+
+    #[graphql(guard(PermissionGuard(permission = "UserPermission::ClubMember")))]
+    async fn update_asset<'a>(
+        &self,
+        ctx: &'a Context<'_>,
+        asset_id: StringNumber,
+        update: UpdateAssetDto,
+    ) -> async_graphql::Result<Asset> {
+        let pool = ctx.data::<Pool<ConnectionManager<MysqlConnection>>>()?;
+        let user = ctx.data::<User>()?;
+        let conn = pool.get()?;
+
+        let club_id = {
+            use crate::models::schema::asset;
+
+            asset::table
+                .find(asset_id)
+                .select(asset::club_id)
+                .first::<String>(&conn)?
+        };
+
+        if !Club::check_club_permission(
+            &conn,
+            &club_id,
+            user,
+            crate::models::ClubEditLevel::Editor,
+        )? {
+            return Err(async_graphql::Error::new("Not allowed"));
+        }
+
+        conn.transaction(|| -> Result<(), anyhow::Error> {
+            use crate::models::schema::asset;
+            diesel::update(asset::table.find(asset_id))
+                .set(&update)
+                .execute(&conn)?;
+
+            Ok(())
         })?;
 
         let asset = {
