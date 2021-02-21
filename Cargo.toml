@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 warp = "0.3.0"
-async-graphql = "2.5.2"
+async-graphql = { version = "2.5.2", features = ["multipart", "unblock", "chrono", "apollo_tracing", "log"] }
 async-graphql-warp = "2.5.2"
 async-trait = "0.1.42"
 serde_json = "1.0"

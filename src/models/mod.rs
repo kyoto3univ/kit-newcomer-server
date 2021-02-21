@@ -1,3 +1,5 @@
+no_arg_sql_function!(last_insert_id, diesel::types::Bigint);
+
 pub mod schema;
 
 mod club;

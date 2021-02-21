@@ -19,4 +19,6 @@ pub struct Config {
     pub jwt_secret: String,
     #[envconfig(from = "JWT_ISSUER", default = "kit-newcomer-server")]
     pub jwt_issuer: String,
+    #[envconfig(from = "ASSET_PATH", default = "./assets")]
+    pub asset_path: String,
 }

@@ -1,7 +1,7 @@
 use async_graphql::{guard::Guard, Context, Object, Result};
 use chrono::Utc;
-use diesel::{dsl::count, prelude::*, r2d2::ConnectionManager};
-use r2d2::{Pool, PooledConnection};
+use diesel::{prelude::*, r2d2::ConnectionManager};
+use r2d2::Pool;
 use uuid::Uuid;
 
 use crate::{
@@ -11,27 +11,6 @@ use crate::{
     models::{Club, ClubEditLevel, User, UserClubRelation, UserPermission},
     utils::StringNumber,
 };
-
-fn check_club_permission(
-    conn: &PooledConnection<ConnectionManager<MysqlConnection>>,
-    id: &String,
-    user: &User,
-    perm: ClubEditLevel,
-) -> Result<bool> {
-    if user.permission >= UserPermission::Moderator {
-        return Ok(true);
-    }
-
-    let club_count = {
-        use crate::models::schema::user_club_relation::*;
-        table
-            .filter(club_id.eq(id).and(user_id.eq(user.id)).and(level.ge(perm)))
-            .select(count(club_id))
-            .get_result::<i64>(conn)?
-    };
-
-    Ok(club_count == 1)
-}
 
 #[derive(Debug, Default)]
 pub struct ClubMutation;
@@ -92,7 +71,7 @@ impl ClubMutation {
         let user = ctx.data::<User>()?;
         let conn = pool.get()?;
 
-        if !check_club_permission(&conn, &id, user, ClubEditLevel::Editor)? {
+        if !Club::check_club_permission(&conn, &id, user, ClubEditLevel::Editor)? {
             return Err(async_graphql::Error::new("Not allowed"));
         }
 
@@ -124,7 +103,7 @@ impl ClubMutation {
         let user = ctx.data::<User>()?;
         let conn = pool.get()?;
 
-        if !check_club_permission(&conn, &id, user, ClubEditLevel::Owner)? {
+        if !Club::check_club_permission(&conn, &id, user, ClubEditLevel::Owner)? {
             return Err(async_graphql::Error::new("Not allowed"));
         }
 
@@ -157,7 +136,7 @@ impl ClubMutation {
         let user = ctx.data::<User>()?;
         let conn = pool.get()?;
 
-        if !check_club_permission(&conn, &club_id, user, ClubEditLevel::Owner)? {
+        if !Club::check_club_permission(&conn, &club_id, user, ClubEditLevel::Owner)? {
             return Err(async_graphql::Error::new("Not allowed"));
         }
 
@@ -208,7 +187,7 @@ impl ClubMutation {
         let user = ctx.data::<User>()?;
         let conn = pool.get()?;
 
-        if !check_club_permission(&conn, &club_id, user, ClubEditLevel::Owner)? {
+        if !Club::check_club_permission(&conn, &club_id, user, ClubEditLevel::Owner)? {
             return Err(async_graphql::Error::new("Not allowed"));
         }
 
