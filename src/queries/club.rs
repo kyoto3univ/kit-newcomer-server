@@ -3,6 +3,7 @@ use diesel::{prelude::*, r2d2::ConnectionManager};
 use r2d2::Pool;
 
 use crate::{
+    dto::paging::PagingObject,
     guard::PermissionGuard,
     model_resolver::club::{ClubWithLevelItem, ClubWithMembers},
     models::{Club, User, UserClubRelation, UserPermission},
@@ -40,23 +41,31 @@ impl ClubQuery {
         ctx: &'a Context<'_>,
         offset: Option<i64>,
         limit: Option<i64>,
-    ) -> Result<Vec<ClubWithMembers>> {
+    ) -> Result<PagingObject<ClubWithMembers>> {
         let pool = ctx.data::<Pool<ConnectionManager<MysqlConnection>>>()?;
         let conn = pool.get()?;
 
         let clubs = {
             use crate::models::schema::club;
 
-            club::table
-                .order(club::created_at.desc())
-                .offset(offset.unwrap_or(0))
-                .limit(limit.unwrap_or(10))
-                .load::<Club>(&conn)?
+            let query = club::table.order(club::created_at.desc());
+
+            (
+                query.count().get_result::<i64>(&conn)?,
+                query
+                    .offset(offset.unwrap_or(0))
+                    .limit(limit.unwrap_or(10))
+                    .load::<Club>(&conn)?,
+            )
         };
 
-        Ok(clubs
-            .into_iter()
-            .map(|club| ClubWithMembers(club))
-            .collect())
+        Ok(PagingObject {
+            count: clubs.0,
+            items: clubs
+                .1
+                .into_iter()
+                .map(|club| ClubWithMembers(club))
+                .collect(),
+        })
     }
 }

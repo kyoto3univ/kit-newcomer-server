@@ -2,6 +2,7 @@ use async_graphql::{Context, Object, Result};
 use diesel::{prelude::*, r2d2::ConnectionManager};
 use r2d2::Pool;
 
+use crate::dto::paging::PagingObject;
 use crate::models::{User, UserPermission};
 
 #[derive(Debug, Default)]
@@ -32,27 +33,32 @@ impl UserQuery {
         limit: Option<i64>,
         least_permission: Option<UserPermission>,
         screen_name: Option<String>,
-    ) -> Result<Vec<User>> {
+    ) -> Result<PagingObject<User>> {
         let pool = ctx.data::<Pool<ConnectionManager<MysqlConnection>>>()?;
         let conn = pool.get()?;
 
         let users = {
             use crate::models::schema::user;
 
-            let mut filter = user::table
-                .order(user::id.desc())
-                .offset(offset.unwrap_or(0))
-                .limit(limit.unwrap_or(10))
-                .into_boxed();
-            if let Some(perm) = least_permission {
-                filter = filter.filter(user::permission.ge(perm));
-            }
+            let make_filter = || {
+                let mut filter = user::table.order(user::id.desc()).into_boxed();
+                if let Some(perm) = &least_permission {
+                    filter = filter.filter(user::permission.ge(perm));
+                }
 
-            if let Some(sn) = screen_name {
-                filter = filter.filter(user::screen_name.like(format!("%{}%", sn)));
-            }
+                if let Some(sn) = &screen_name {
+                    filter = filter.filter(user::screen_name.like(format!("%{}%", sn)));
+                }
+                filter
+            };
 
-            filter.get_results::<User>(&conn)?
+            PagingObject {
+                count: make_filter().count().get_result::<i64>(&conn)?,
+                items: make_filter()
+                    .offset(offset.unwrap_or(0))
+                    .limit(limit.unwrap_or(10))
+                    .get_results::<User>(&conn)?,
+            }
         };
 
         Ok(users)
