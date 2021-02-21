@@ -3,7 +3,7 @@ use chrono::{DateTime, Local, TimeZone};
 use diesel::{prelude::*, r2d2::ConnectionManager};
 use r2d2::Pool;
 
-use crate::models::{Club, ClubEditLevel, User, UserClubRelation};
+use crate::models::{Asset, Club, ClubEditLevel, ClubTopImageType, User, UserClubRelation};
 
 pub struct ClubWithMembers(pub Club);
 
@@ -46,6 +46,9 @@ impl ClubWithMembers {
     async fn updated_at(&self) -> Result<DateTime<Local>> {
         Ok(Local.from_utc_datetime(&self.0.updated_at))
     }
+    async fn top_content_type(&self) -> Result<&ClubTopImageType> {
+        Ok(&self.0.top_content_type)
+    }
 
     // Meaningful impl
     async fn members<'b>(&self, ctx: &'b Context<'_>) -> Result<Vec<ClubWithMembersItem>> {
@@ -65,6 +68,46 @@ impl ClubWithMembers {
             .into_iter()
             .map(|(rel, user)| ClubWithMembersItem(rel.level, user))
             .collect())
+    }
+
+    async fn top_image<'b>(&self, ctx: &'b Context<'_>) -> Result<Option<Asset>> {
+        if self.0.top_image_id.is_none() {
+            return Ok(None);
+        }
+
+        let conn = ctx
+            .data::<Pool<ConnectionManager<MysqlConnection>>>()?
+            .get()?;
+
+        let asset = {
+            use crate::models::schema::asset;
+
+            asset::table
+                .find(self.0.top_image_id.unwrap())
+                .first::<Asset>(&conn)?
+        };
+
+        Ok(Some(asset))
+    }
+
+    async fn thumb_image<'b>(&self, ctx: &'b Context<'_>) -> Result<Option<Asset>> {
+        if self.0.thumb_image_id.is_none() {
+            return Ok(None);
+        }
+
+        let conn = ctx
+            .data::<Pool<ConnectionManager<MysqlConnection>>>()?
+            .get()?;
+
+        let asset = {
+            use crate::models::schema::asset;
+
+            asset::table
+                .find(self.0.thumb_image_id.unwrap())
+                .first::<Asset>(&conn)?
+        };
+
+        Ok(Some(asset))
     }
 }
 
