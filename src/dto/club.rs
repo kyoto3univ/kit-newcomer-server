@@ -1,6 +1,6 @@
 use async_graphql::InputObject;
 
-use crate::models::schema::club;
+use crate::models::{schema::club, ClubTopImageType};
 
 #[derive(Debug, Insertable)]
 #[table_name = "club"]
@@ -20,4 +20,5 @@ pub struct UpdateClubDto {
     pub schedule: Option<String>,
     pub video_url: Option<String>,
     pub contact_url: Option<String>,
+    pub top_content_type: Option<ClubTopImageType>,
 }
