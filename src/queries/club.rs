@@ -41,18 +41,31 @@ impl ClubQuery {
         ctx: &'a Context<'_>,
         offset: Option<i64>,
         limit: Option<i64>,
+        include_unpublished: Option<bool>,
     ) -> Result<PagingObject<ClubWithMembers>> {
         let pool = ctx.data::<Pool<ConnectionManager<MysqlConnection>>>()?;
         let conn = pool.get()?;
+        let user = ctx.data::<User>()?;
+
+        if include_unpublished.unwrap_or(false) && user.permission < UserPermission::Moderator {
+            return Err(async_graphql::Error::new("Not allowed"));
+        }
 
         let clubs = {
             use crate::models::schema::club;
 
-            let query = club::table.order(club::created_at.desc());
+            let query = || {
+                let mut query = club::table.order(club::created_at.desc()).into_boxed();
+                if !include_unpublished.unwrap_or(false) {
+                    query = query.filter(club::is_published.eq(true));
+                }
+
+                query
+            };
 
             (
-                query.count().get_result::<i64>(&conn)?,
-                query
+                query().count().get_result::<i64>(&conn)?,
+                query()
                     .offset(offset.unwrap_or(0))
                     .limit(limit.unwrap_or(10))
                     .load::<Club>(&conn)?,
