@@ -59,11 +59,12 @@ pub async fn start_graphql(cfg: Arc<Config>, db: Pool<ConnectionManager<MysqlCon
     .data(db.clone())
     .finish();
 
+    let gql_config = cfg.clone();
     let gql_post = warp::header::optional::<String>("authorization")
         .and(graphql(schema))
         .and_then(
             move |auth_header_opt: Option<String>, (schema, mut request): (SchemaType, Request)| {
-                let cfg_clone = cfg.clone();
+                let cfg_clone = gql_config.clone();
                 let db_clone = db.clone();
                 async move {
                     if let Some(auth_header) = auth_header_opt {
@@ -88,14 +89,35 @@ pub async fn start_graphql(cfg: Arc<Config>, db: Pool<ConnectionManager<MysqlCon
                     Ok::<_, warp::Rejection>(GqlWarpResponse::from(resp))
                 }
             },
+        )
+        .with(
+            warp::cors()
+                .allow_any_origin()
+                .allow_header("Authorization")
+                .allow_header("content-type")
+                .allow_methods(vec!["GET", "POST", "OPTIONS"])
+                .build(),
         );
     let graphql_playground = warp::path::end().and(warp::get()).map(|| {
         Response::builder()
             .header("content-type", "text/html")
             .body(playground_source(GraphQLPlaygroundConfig::new("/")))
     });
+    let options_request = warp::options().map(warp::reply).with(
+        warp::cors()
+            .allow_any_origin()
+            .allow_header("Authorization")
+            .allow_header("content-type")
+            .allow_methods(vec!["GET", "POST", "OPTIONS"])
+            .build(),
+    );
+    let asset_request = warp::path("assets").and(warp::fs::dir(cfg.asset_path.clone()));
 
-    let filter = graphql_playground.or(gql_post);
+    let filter = options_request
+        .or(asset_request)
+        .or(graphql_playground)
+        .or(gql_post);
+
     let port: u16 = env::var("PORT").map_or(8000, |s| s.parse().unwrap());
 
     warp::serve(filter).run(([0, 0, 0, 0], port)).await;
