@@ -1,10 +1,8 @@
-use std::{path::Path, sync::Arc};
+use std::{io::Write, path::Path, sync::Arc};
 
 use async_graphql::{guard::Guard, Context, Object, Upload};
 use diesel::{prelude::*, r2d2::ConnectionManager};
-use futures::{io::BufReader, AsyncReadExt};
 use r2d2::Pool;
-use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
 
 use crate::{
@@ -63,19 +61,12 @@ impl AssetMutation {
             .to_str()
             .ok_or_else(|| async_graphql::Error::new("Path construction error"))?;
 
-        let mut reader = BufReader::new(upload_value.into_async_read());
-        let mut file = tokio::fs::File::create(file_path_str).await?;
+        let mut reader = upload_value.into_read();
+        let mut file = std::fs::File::create(file_path_str)?;
 
-        let mut buf = [0u8; 1024 * 1024];
-        while let Ok(n) = reader.read(&mut buf).await {
-            if n == 0 {
-                break;
-            }
-            file.write(&buf[..n]).await?;
-        }
+        std::io::copy(&mut reader, &mut file)?;
 
-        file.flush().await?;
-        file.shutdown().await?;
+        file.flush()?;
 
         let asset_id = conn.transaction(|| -> Result<i64, anyhow::Error> {
             use crate::models::schema::asset;
