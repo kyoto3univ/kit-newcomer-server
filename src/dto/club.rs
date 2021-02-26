@@ -25,17 +25,12 @@ pub struct UpdateClubDto {
     pub schedule: Option<String>,
     pub video_url: Option<String>,
     pub contact_url: Option<String>,
-    pub top_content_type: Option<ClubTopImageType>,
-}
-
-#[derive(Debug, Clone, InputObject, AsChangeset)]
-#[table_name = "club"]
-pub struct UpdateClubAssetDto {
+    pub top_content_type: ClubTopImageType,
     pub top_image_id: Option<StringNumber>,
     pub thumb_image_id: Option<StringNumber>,
 }
 
-impl UpdateClubAssetDto {
+impl UpdateClubDto {
     pub fn validate(
         &self,
         conn: &PooledConnection<ConnectionManager<MysqlConnection>>,

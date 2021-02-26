@@ -5,7 +5,7 @@ use r2d2::Pool;
 use uuid::Uuid;
 
 use crate::{
-    dto::club::{NewClubDto, UpdateClubAssetDto, UpdateClubDto},
+    dto::club::{NewClubDto, UpdateClubDto},
     guard::PermissionGuard,
     model_resolver::club::ClubWithMembers,
     models::{Club, ClubEditLevel, User, UserClubRelation, UserPermission},
@@ -66,7 +66,6 @@ impl ClubMutation {
         ctx: &'a Context<'_>,
         id: String,
         update: UpdateClubDto,
-        asset_update: UpdateClubAssetDto,
     ) -> Result<ClubWithMembers> {
         let pool = ctx.data::<Pool<ConnectionManager<MysqlConnection>>>()?;
         let user = ctx.data::<User>()?;
@@ -76,18 +75,14 @@ impl ClubMutation {
             return Err(async_graphql::Error::new("Not allowed"));
         }
 
-        if !asset_update.validate(&conn, &id)? {
+        if !update.validate(&conn, &id)? {
             return Err(async_graphql::Error::new("Not allowed"));
         }
 
         conn.transaction(|| -> Result<(), anyhow::Error> {
             use crate::models::schema::club::dsl;
             diesel::update(dsl::club.filter(dsl::id.eq(&id)))
-                .set((
-                    &update,
-                    &asset_update,
-                    dsl::updated_at.eq(Utc::now().naive_utc()),
-                ))
+                .set((&update, dsl::updated_at.eq(Utc::now().naive_utc())))
                 .execute(&conn)?;
 
             Ok(())
