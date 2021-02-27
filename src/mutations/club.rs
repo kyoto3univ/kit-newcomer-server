@@ -5,7 +5,7 @@ use r2d2::Pool;
 use uuid::Uuid;
 
 use crate::{
-    dto::club::{NewClubDto, UpdateClubDto},
+    dto::club::{NewClubDto, UpdateClubDbDto, UpdateClubDto},
     guard::PermissionGuard,
     model_resolver::club::ClubWithMembers,
     models::{Club, ClubEditLevel, User, UserClubRelation, UserPermission},
@@ -82,7 +82,10 @@ impl ClubMutation {
         conn.transaction(|| -> Result<(), anyhow::Error> {
             use crate::models::schema::club::dsl;
             diesel::update(dsl::club.filter(dsl::id.eq(&id)))
-                .set((&update, dsl::updated_at.eq(Utc::now().naive_utc())))
+                .set((
+                    UpdateClubDbDto::from(update),
+                    dsl::updated_at.eq(Utc::now().naive_utc()),
+                ))
                 .execute(&conn)?;
 
             Ok(())
