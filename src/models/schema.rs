@@ -17,6 +17,7 @@ table! {
         id -> Varchar,
         name -> Varchar,
         is_published -> Bool,
+        moderation_state -> Integer,
         created_at -> Datetime,
         updated_at -> Datetime,
         short_description -> Nullable<Text>,

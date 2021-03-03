@@ -4,7 +4,8 @@ use diesel::{prelude::*, r2d2::ConnectionManager};
 use r2d2::Pool;
 
 use crate::models::{
-    Asset, Club, ClubEditLevel, ClubTopImageType, User, UserClubRelation, UserPermission,
+    Asset, Club, ClubEditLevel, ClubModerationState, ClubTopImageType, User, UserClubRelation,
+    UserPermission,
 };
 
 pub struct ClubWithMembers(pub Club);
@@ -20,6 +21,9 @@ impl ClubWithMembers {
     }
     async fn is_published(&self) -> Result<&bool> {
         Ok(&self.0.is_published)
+    }
+    async fn moderation_state(&self) -> Result<&ClubModerationState> {
+        Ok(&self.0.moderation_state)
     }
     async fn short_description(&self) -> Result<&Option<String>> {
         Ok(&self.0.short_description)

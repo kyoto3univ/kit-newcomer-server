@@ -14,6 +14,16 @@ define_enum! {
     }
 }
 
+define_enum! {
+    #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Enum)]
+    pub enum ClubModerationState {
+        NotAccepted = 0,
+        Waiting = 1,
+        Rejected = 2,
+        Accepted = 3,
+    }
+}
+
 #[derive(Debug, Clone, Queryable, Identifiable, Associations)]
 #[table_name = "club"]
 #[belongs_to(super::UserClubRelation, foreign_key = "id")]
@@ -21,6 +31,7 @@ pub struct Club {
     pub id: String,
     pub name: String,
     pub is_published: bool,
+    pub moderation_state: ClubModerationState,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub short_description: Option<String>,
