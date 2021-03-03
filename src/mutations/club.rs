@@ -8,7 +8,7 @@ use crate::{
     dto::club::{NewClubDto, UpdateClubDbDto, UpdateClubDto},
     guard::PermissionGuard,
     model_resolver::club::ClubWithMembers,
-    models::{Club, ClubEditLevel, User, UserClubRelation, UserPermission},
+    models::{Club, ClubEditLevel, ClubModerationState, User, UserClubRelation, UserPermission},
     utils::StringNumber,
 };
 
@@ -114,10 +114,58 @@ impl ClubMutation {
             return Err(async_graphql::Error::new("Not allowed"));
         }
 
+        let club: Club = {
+            use crate::models::schema::club::dsl;
+            dsl::club.find(&id).first::<Club>(&conn)?
+        };
+
+        if club.moderation_state != ClubModerationState::Accepted {
+            return Err(async_graphql::Error::new("Not accepted"));
+        }
+
         conn.transaction(|| -> Result<(), anyhow::Error> {
             use crate::models::schema::club::dsl;
             diesel::update(dsl::club.filter(dsl::id.eq(&id)))
                 .set(dsl::is_published.eq(&is_published))
+                .execute(&conn)?;
+
+            Ok(())
+        })?;
+
+        let club = {
+            use crate::models::schema::club::dsl;
+            dsl::club.find(&id).get_result::<Club>(&conn)?
+        };
+
+        Ok(ClubWithMembers(club))
+    }
+
+    #[graphql(guard(PermissionGuard(permission = "UserPermission::ClubMember")))]
+    async fn change_moderation_state<'a>(
+        &self,
+        ctx: &'a Context<'_>,
+        id: String,
+        moderation_state: ClubModerationState,
+    ) -> Result<ClubWithMembers> {
+        let pool = ctx.data::<Pool<ConnectionManager<MysqlConnection>>>()?;
+        let user = ctx.data::<User>()?;
+        let conn = pool.get()?;
+
+        if !Club::check_club_permission(&conn, &id, user, ClubEditLevel::Owner)? {
+            return Err(async_graphql::Error::new("Not allowed"));
+        }
+
+        // Less than moderater & more than waiting state
+        if moderation_state > ClubModerationState::Waiting
+            && user.permission < UserPermission::Moderator
+        {
+            return Err(async_graphql::Error::new("Not accepted"));
+        }
+
+        conn.transaction(|| -> Result<(), anyhow::Error> {
+            use crate::models::schema::club::dsl;
+            diesel::update(dsl::club.filter(dsl::id.eq(&id)))
+                .set(dsl::moderation_state.eq(&moderation_state))
                 .execute(&conn)?;
 
             Ok(())
