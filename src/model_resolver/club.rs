@@ -3,7 +3,9 @@ use chrono::{DateTime, Local, TimeZone};
 use diesel::{prelude::*, r2d2::ConnectionManager};
 use r2d2::Pool;
 
-use crate::models::{Asset, Club, ClubEditLevel, ClubTopImageType, User, UserClubRelation};
+use crate::models::{
+    Asset, Club, ClubEditLevel, ClubTopImageType, User, UserClubRelation, UserPermission,
+};
 
 pub struct ClubWithMembers(pub Club);
 
@@ -116,7 +118,11 @@ pub struct ClubWithMembersItem(pub ClubEditLevel, pub User);
 #[Object]
 impl ClubWithMembersItem {
     async fn level(&self) -> Result<&ClubEditLevel> {
-        Ok(&self.0)
+        if self.1.permission >= UserPermission::Moderator {
+            Ok(&ClubEditLevel::Owner)
+        } else {
+            Ok(&self.0)
+        }
     }
 
     async fn user(&self) -> Result<&User> {

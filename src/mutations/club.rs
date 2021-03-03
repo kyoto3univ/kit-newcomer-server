@@ -147,10 +147,6 @@ impl ClubMutation {
             return Err(async_graphql::Error::new("Not allowed"));
         }
 
-        if user_id.0 == user.id.0 {
-            return Err(async_graphql::Error::new("User must not be you"));
-        }
-
         conn.transaction(|| -> Result<()> {
             use crate::models::schema::{user, user_club_relation};
 
