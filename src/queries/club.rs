@@ -45,10 +45,12 @@ impl ClubQuery {
     ) -> Result<PagingObject<ClubWithMembers>> {
         let pool = ctx.data::<Pool<ConnectionManager<MysqlConnection>>>()?;
         let conn = pool.get()?;
-        let user = ctx.data::<User>()?;
 
-        if include_unpublished.unwrap_or(false) && user.permission < UserPermission::Moderator {
-            return Err(async_graphql::Error::new("Not allowed"));
+        if include_unpublished.unwrap_or(false) {
+            let user = ctx.data::<User>()?;
+            if user.permission < UserPermission::Moderator {
+                return Err(async_graphql::Error::new("Not allowed"));
+            }
         }
 
         let clubs = {
@@ -85,7 +87,6 @@ impl ClubQuery {
     async fn club<'a>(&self, ctx: &'a Context<'_>, id: String) -> Result<ClubWithMembers> {
         let pool = ctx.data::<Pool<ConnectionManager<MysqlConnection>>>()?;
         let conn = pool.get()?;
-        let user = ctx.data::<User>()?;
 
         let club = {
             use crate::models::schema::club;
@@ -93,23 +94,26 @@ impl ClubQuery {
             club::table.find(&id).get_result::<Club>(&conn)?
         };
 
-        if !club.is_published && user.permission < UserPermission::Moderator {
-            let is_member = {
-                use crate::models::schema::user_club_relation;
+        if !club.is_published {
+            let user = ctx.data::<User>()?;
+            if user.permission < UserPermission::Moderator {
+                let is_member = {
+                    use crate::models::schema::user_club_relation;
 
-                user_club_relation::table
-                    .filter(
-                        user_club_relation::club_id
-                            .eq(&id)
-                            .and(user_club_relation::user_id.eq(&user.id)),
-                    )
-                    .count()
-                    .get_result::<i64>(&conn)?
-                    > 0
-            };
+                    user_club_relation::table
+                        .filter(
+                            user_club_relation::club_id
+                                .eq(&id)
+                                .and(user_club_relation::user_id.eq(&user.id)),
+                        )
+                        .count()
+                        .get_result::<i64>(&conn)?
+                        > 0
+                };
 
-            if !is_member {
-                return Err(async_graphql::Error::new("Not allowed"));
+                if !is_member {
+                    return Err(async_graphql::Error::new("Not allowed"));
+                }
             }
         }
 

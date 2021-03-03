@@ -1,8 +1,9 @@
-use async_graphql::{Context, Object, Result};
+use async_graphql::{guard::Guard, Context, Object, Result};
 use diesel::{prelude::*, r2d2::ConnectionManager};
 use r2d2::Pool;
 
 use crate::dto::paging::PagingObject;
+use crate::guard::PermissionGuard;
 use crate::models::{User, UserPermission};
 
 #[derive(Debug, Default)]
@@ -26,6 +27,7 @@ impl UserQuery {
         }
     }
 
+    #[graphql(guard(PermissionGuard(permission = "UserPermission::ClubMember")))]
     async fn get_users<'a>(
         &self,
         ctx: &'a Context<'_>,
