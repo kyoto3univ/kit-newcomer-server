@@ -28,6 +28,21 @@ impl UserMutation {
             return Err(async_graphql::Error::new("Not allowed"));
         }
 
+        if permission == UserPermission::NewcomerOrNone {
+            let club_count = {
+                use crate::models::schema::user_club_relation::dsl;
+
+                dsl::user_club_relation
+                    .filter(dsl::user_id.eq(&user.id))
+                    .count()
+                    .get_result::<i64>(&conn)?
+            };
+
+            if club_count > 0 {
+                return Err(async_graphql::Error::new("The user have joined club."));
+            }
+        }
+
         conn.transaction(|| -> Result<(), anyhow::Error> {
             use crate::models::schema::user::dsl;
             diesel::update(dsl::user.filter(dsl::id.eq(&user_id)))
