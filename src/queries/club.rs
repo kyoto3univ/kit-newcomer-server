@@ -6,7 +6,7 @@ use crate::{
     dto::paging::PagingObject,
     guard::PermissionGuard,
     model_resolver::club::{ClubWithLevelItem, ClubWithMembers},
-    models::{Club, User, UserClubRelation, UserPermission},
+    models::{Club, ClubModerationState, User, UserClubRelation, UserPermission},
 };
 
 #[derive(Debug, Default)]
@@ -42,11 +42,12 @@ impl ClubQuery {
         offset: Option<i64>,
         limit: Option<i64>,
         include_unpublished: Option<bool>,
+        moderation_state: Option<ClubModerationState>,
     ) -> Result<PagingObject<ClubWithMembers>> {
         let pool = ctx.data::<Pool<ConnectionManager<MysqlConnection>>>()?;
         let conn = pool.get()?;
 
-        if include_unpublished.unwrap_or(false) {
+        if include_unpublished.unwrap_or(false) || moderation_state.is_some() {
             let user = ctx.data::<User>()?;
             if user.permission < UserPermission::Moderator {
                 return Err(async_graphql::Error::new("Not allowed"));
@@ -60,6 +61,10 @@ impl ClubQuery {
                 let mut query = club::table.order(club::created_at.desc()).into_boxed();
                 if !include_unpublished.unwrap_or(false) {
                     query = query.filter(club::is_published.eq(true));
+                }
+
+                if let Some(state) = &moderation_state {
+                    query = query.filter(club::moderation_state.eq(state));
                 }
 
                 query
