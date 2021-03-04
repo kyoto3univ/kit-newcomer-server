@@ -162,6 +162,17 @@ impl ClubMutation {
             return Err(async_graphql::Error::new("Not accepted"));
         }
 
+        if moderation_state != ClubModerationState::Accepted {
+            let club: Club = {
+                use crate::models::schema::club::dsl;
+                dsl::club.find(&id).first::<Club>(&conn)?
+            };
+
+            if club.is_published {
+                return Err(async_graphql::Error::new("Make it unpublish at first"));
+            }
+        }
+
         conn.transaction(|| -> Result<(), anyhow::Error> {
             use crate::models::schema::club::dsl;
             diesel::update(dsl::club.filter(dsl::id.eq(&id)))
