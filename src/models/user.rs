@@ -45,4 +45,5 @@ pub struct UserClubRelation {
     pub user_id: StringNumber,
     pub club_id: String,
     pub level: ClubEditLevel,
+    pub is_visible: bool,
 }

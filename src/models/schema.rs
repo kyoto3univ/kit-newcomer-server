@@ -50,6 +50,7 @@ table! {
         user_id -> Bigint,
         club_id -> Varchar,
         level -> Integer,
+        is_visible -> Bool,
     }
 }
 
