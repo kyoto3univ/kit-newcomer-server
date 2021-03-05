@@ -61,14 +61,39 @@ impl ClubWithMembers {
         let conn = ctx
             .data::<Pool<ConnectionManager<MysqlConnection>>>()?
             .get()?;
+        let user_result = ctx.data::<User>();
 
-        let related_users = {
+        if user_result.is_err() {
+            return Ok(Default::default());
+        }
+
+        let mut related_users = {
             use crate::models::schema::{user, user_club_relation};
             user_club_relation::table
                 .inner_join(user::table)
                 .filter(user_club_relation::club_id.eq(&self.0.id))
                 .load::<(UserClubRelation, User)>(&conn)?
         };
+
+        if let Ok(user) = user_result {
+            match user.permission {
+                UserPermission::Admin | UserPermission::Moderator => {}
+                UserPermission::NewcomerOrNone => {
+                    related_users = related_users
+                        .into_iter()
+                        .filter(|(rel, _)| rel.is_visible)
+                        .collect();
+                }
+                UserPermission::ClubMember => {
+                    if !related_users.iter().any(|(rel, _)| rel.user_id == user.id) {
+                        related_users = related_users
+                            .into_iter()
+                            .filter(|(rel, _)| rel.is_visible)
+                            .collect();
+                    }
+                }
+            }
+        }
 
         Ok(related_users
             .into_iter()

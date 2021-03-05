@@ -46,6 +46,7 @@ impl ClubMutation {
                         user_id: user.id.clone(),
                         club_id: id.clone(),
                         level: ClubEditLevel::Owner,
+                        is_visible: false,
                     })
                     .execute(&conn)?;
             }
@@ -225,6 +226,7 @@ impl ClubMutation {
                     club_id: club_id.clone(),
                     user_id: user_id,
                     level: level.unwrap_or(ClubEditLevel::Editor),
+                    is_visible: false,
                 })
                 .execute(&conn)?;
             Ok(())
