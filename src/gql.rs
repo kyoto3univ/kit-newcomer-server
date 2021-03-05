@@ -7,8 +7,8 @@ use async_graphql_warp::{graphql, Response as GqlWarpResponse};
 use diesel::{prelude::*, r2d2::ConnectionManager};
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use r2d2::Pool;
-use std::{env, sync::Arc};
-use warp::{http::Response, Filter};
+use std::sync::Arc;
+use warp::{filters::BoxedFilter, http::Response, Filter};
 
 use super::mutations::*;
 use super::queries::*;
@@ -49,7 +49,10 @@ async fn get_user_from_token(
     Ok(request.data(user))
 }
 
-pub async fn start_graphql(cfg: Arc<Config>, db: Pool<ConnectionManager<MysqlConnection>>) {
+pub fn gql_handler(
+    cfg: Arc<Config>,
+    db: Pool<ConnectionManager<MysqlConnection>>,
+) -> BoxedFilter<(impl warp::Reply,)> {
     let schema = Schema::build(
         QueryRoot::default(),
         MutationRoot::default(),
@@ -103,22 +106,6 @@ pub async fn start_graphql(cfg: Arc<Config>, db: Pool<ConnectionManager<MysqlCon
             .header("content-type", "text/html")
             .body(playground_source(GraphQLPlaygroundConfig::new("/")))
     });
-    let options_request = warp::options().map(warp::reply).with(
-        warp::cors()
-            .allow_any_origin()
-            .allow_header("Authorization")
-            .allow_header("content-type")
-            .allow_methods(vec!["GET", "POST", "OPTIONS"])
-            .build(),
-    );
-    let asset_request = warp::path("assets").and(warp::fs::dir(cfg.asset_path.clone()));
 
-    let filter = options_request
-        .or(asset_request)
-        .or(graphql_playground)
-        .or(gql_post);
-
-    let port: u16 = env::var("PORT").map_or(8000, |s| s.parse().unwrap());
-
-    warp::serve(filter).run(([0, 0, 0, 0], port)).await;
+    graphql_playground.or(gql_post).boxed()
 }
