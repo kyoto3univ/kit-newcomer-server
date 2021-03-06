@@ -1,7 +1,12 @@
-use std::{io::Write, path::Path, sync::Arc};
+use std::{
+    io::{Read, Write},
+    path::Path,
+    sync::Arc,
+};
 
 use async_graphql::{guard::Guard, Context, Object, Upload};
 use diesel::{prelude::*, r2d2::ConnectionManager};
+use infer::MatcherType;
 use r2d2::Pool;
 use uuid::Uuid;
 
@@ -46,13 +51,24 @@ impl AssetMutation {
             return Err(async_graphql::Error::new("File size exceeded"));
         }
 
-        let extension = Path::new(&upload_filename)
-            .extension()
-            .ok_or_else(|| async_graphql::Error::new("Extension needed"))?;
+        let mut file = upload_value.content;
+        let mut buf: Vec<u8> = Vec::with_capacity(upload_size as usize);
+        let read_size = file.read_to_end(&mut buf)?;
+
+        if read_size != upload_size as usize {
+            return Err(async_graphql::Error::new("File read failed"));
+        }
+
+        let ftype =
+            infer::get(&buf).ok_or_else(|| async_graphql::Error::new("File type is unknown"))?;
+
+        if ftype.matcher_type() != MatcherType::IMAGE {
+            return Err(async_graphql::Error::new("File type is not allowed"));
+        }
 
         let mut file_name = Uuid::new_v4().to_hyphenated().to_string();
         file_name.push('.');
-        file_name.push_str(extension.to_str().unwrap_or("dat"));
+        file_name.push_str(ftype.extension());
 
         let file_path = Path::new(&config.asset_path)
             .to_path_buf()
@@ -61,11 +77,9 @@ impl AssetMutation {
             .to_str()
             .ok_or_else(|| async_graphql::Error::new("Path construction error"))?;
 
-        let mut reader = upload_value.into_read();
         let mut file = std::fs::File::create(file_path_str)?;
 
-        std::io::copy(&mut reader, &mut file)?;
-
+        file.write_all(&buf)?;
         file.flush()?;
 
         let asset_id = conn.transaction(|| -> Result<i64, anyhow::Error> {
