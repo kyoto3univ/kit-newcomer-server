@@ -63,7 +63,9 @@ pub fn gql_handler(
     .finish();
 
     let gql_config = cfg.clone();
-    let gql_post = warp::header::optional::<String>("authorization")
+    let gql_post = warp::path::end()
+        .and(warp::post())
+        .and(warp::header::optional::<String>("authorization"))
         .and(graphql(schema))
         .and_then(
             move |auth_header_opt: Option<String>, (schema, mut request): (SchemaType, Request)| {

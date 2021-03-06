@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate diesel;
 
+mod asset_serve;
 mod config;
 mod dto;
 mod gql;
@@ -36,7 +37,7 @@ async fn main() -> Result<(), anyhow::Error> {
             .allow_methods(vec!["GET", "POST", "OPTIONS"])
             .build(),
     );
-    let asset_request = warp::path("assets").and(warp::fs::dir(config.asset_path.clone()));
+    let asset_request = asset_serve::asset_resize_handler(config.clone());
     let gql_filter = gql::gql_handler(config.clone(), pool);
 
     let filter = gql_filter.or(options_request).or(asset_request);
