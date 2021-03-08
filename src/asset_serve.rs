@@ -24,10 +24,18 @@ impl AssetResizeQuery {
         let image = match (self.w, self.h) {
             (None, None) => image,
             (Some(w), None) => {
-                image.thumbnail(w, (orig_h as f32 / orig_w as f32 * w as f32).round() as u32)
+                if w > orig_w {
+                    image
+                } else {
+                    image.thumbnail(w, (orig_h as f32 / orig_w as f32 * w as f32).round() as u32)
+                }
             }
             (None, Some(h)) => {
-                image.thumbnail((orig_w as f32 / orig_h as f32 * h as f32).round() as u32, h)
+                if h > orig_h {
+                    image
+                } else {
+                    image.thumbnail((orig_w as f32 / orig_h as f32 * h as f32).round() as u32, h)
+                }
             }
             (Some(w), Some(h)) => image.thumbnail(w, h),
         };
